@@ -1,5 +1,6 @@
 var express = require('express');
 var router = express.Router();
+var authed = require('../authed/authed.js');
 
 /* GET home page. */
 router.get('/', function(req, res, next) {
@@ -67,19 +68,23 @@ router.get('/stocks/:symbol', function(req, res, next){
 });
 
 router.get('/stocks/authed/:symbol', function(req, res, next){
-  let symbol = req.params.symbol;
-  let fromdate = req.query.from;
-  let todate = req.query.to;
-  console.log(fromdate, todate, typeof todate);
-  // req.db.from('stocks').select('*').where('symbol','=',symbol,'AND','timestamp','>=',fromdate,'AND','timestamp','<',todate)
-  req.db.raw("SELECT * FROM stocks where symbol='"+symbol+"' and timestamp >= '"+fromdate+"' and timestamp < '"+todate+"';")
-  .then((rows) => {
-    console.log(rows);
-    res.json({"Error":false, "Message":"Success", "Stocks":rows})
-  })
-  .catch((err) => {
-    res.json({"Error":true, "Message":"Error executing MySQL query"})
-  })
+  if (authed.authenticateUser(authed.userInfo)){
+    let symbol = req.params.symbol;
+    let fromdate = req.query.from;
+    let todate = req.query.to;
+    console.log(fromdate, todate, typeof todate);
+    req.db.from('stocks').select('*').where('symbol','=',symbol).andWhere('timestamp','>=',fromdate).andWhere('timestamp','<',todate)
+    .then((rows) => {
+      console.log(rows);
+      res.json({"Error":false, "Message":"Success", "Stocks":rows})
+    })
+    .catch((err) => {
+      res.json({"Error":true, "Message":"Error executing MySQL query"})
+    })
+  }else{
+    res.redirect('/stocks/symbols');
+  }
+
 });
 
 module.exports = router;
